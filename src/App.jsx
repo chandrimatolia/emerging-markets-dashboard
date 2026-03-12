@@ -409,76 +409,107 @@ export default function App() {
         {/* ── 03 CLUSTERS ── */}
         {tab==="clusters" && (
           <div>
-            <SecHead n="03" title="ML Cluster Analysis"
-              desc={`KMeans (k=4) applied to 12 standardised features. Countries projected onto 2D PCA space. PC1 = ${(META.pca_variance_pc1*100).toFixed(1)}% explained variance (governance/institutional quality). PC2 = ${(META.pca_variance_pc2*100).toFixed(1)}% (growth dynamics & debt). Total explained: ${((META.pca_variance_pc1+META.pca_variance_pc2)*100).toFixed(1)}%.`}/>
+            <SecHead n="03" title="Governance quality separates high-potential markets from the rest"
+              desc={`KMeans (k=4) on 12 standardised features. PC1 (${(META.pca_variance_pc1*100).toFixed(1)}% of variance) tracks institutional quality — rule of law, stability, anti-corruption. PC2 (${(META.pca_variance_pc2*100).toFixed(1)}%) tracks growth and debt dynamics.`}/>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18}}>
               <Panel>
-                <PLabel>PCA Scatter — Cluster Space</PLabel>
-                <ResponsiveContainer width="100%" height={380}>
-                  <ScatterChart margin={{left:10,right:10,top:10,bottom:10}}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)"/>
-                    <XAxis dataKey="x" type="number" domain={["auto","auto"]} {...AX}
-                      label={{value:`PC1 (${(META.pca_variance_pc1*100).toFixed(1)}%)`,position:"insideBottom",offset:-5,fill:MUTED,fontSize:10}}/>
-                    <YAxis dataKey="y" type="number" domain={["auto","auto"]} {...AX}
-                      label={{value:`PC2 (${(META.pca_variance_pc2*100).toFixed(1)}%)`,angle:-90,position:"insideLeft",fill:MUTED,fontSize:10}}/>
+                {/* Editorial headline */}
+                <div style={{marginBottom:16}}>
+                  <div style={{fontSize:13,fontWeight:600,color:TEXT,marginBottom:3}}>Strong institutions cluster to the right — weak ones to the left</div>
+                  <div style={{fontSize:11,color:MUTED}}>Each dot is one country. Colour = investment tier.</div>
+                </div>
+                {/* Inline tier legend */}
+                <div style={{display:"flex",gap:14,marginBottom:10,flexWrap:"wrap"}}>
+                  {TIER_NAMES.map(t=>(
+                    <div key={t} style={{display:"flex",alignItems:"center",gap:5}}>
+                      <div style={{width:8,height:8,borderRadius:"50%",background:TIER_COLORS[t]}}/>
+                      <span style={{fontSize:10,color:MUTED}}>{t.split(":")[0]}</span>
+                    </div>
+                  ))}
+                </div>
+                <ResponsiveContainer width="100%" height={360}>
+                  <ScatterChart margin={{left:10,right:60,top:10,bottom:30}}>
+                    <CartesianGrid strokeDasharray="" stroke="rgba(255,255,255,0.04)" vertical={false}/>
+                    <XAxis dataKey="x" type="number" domain={["auto","auto"]}
+                      tick={{fill:MUTED,fontSize:10}} axisLine={{stroke:BORDER}} tickLine={false}
+                      label={{value:`← Weak governance   |   Strong governance →`,position:"insideBottom",offset:-18,fill:MUTED,fontSize:10}}/>
+                    <YAxis dataKey="y" type="number" domain={["auto","auto"]}
+                      tick={{fill:MUTED,fontSize:10}} axisLine={false} tickLine={false}
+                      label={{value:"Growth/debt axis →",angle:-90,position:"insideLeft",offset:10,fill:MUTED,fontSize:10}}/>
+                    <ReferenceLine x={0} stroke="rgba(255,255,255,0.12)" strokeWidth={1}/>
+                    <ReferenceLine y={0} stroke="rgba(255,255,255,0.08)" strokeWidth={1}/>
                     <Tooltip content={({payload})=>{
                       const d=payload?.[0]?.payload; if(!d) return null;
-                      return <div style={{...TT.contentStyle}}><strong>{d.country}</strong><div style={{color:MUTED,fontSize:11}}>Score: {d.investment_score}</div><div style={{color:d.tier_color,fontSize:11}}>{d.tier}</div></div>;
+                      return <div style={{...TT.contentStyle}}>
+                        <strong>{d.country}</strong>
+                        <div style={{color:d.tier_color,fontSize:11,marginTop:2}}>{d.tier}</div>
+                        <div style={{color:MUTED,fontSize:11,marginTop:2}}>Investment score: {d.investment_score}</div>
+                      </div>;
                     }}/>
                     {TIER_NAMES.map(t=>(
-                      <Scatter key={t} name={t.split(":")[0]}
+                      <Scatter key={t}
                         data={COUNTRIES.filter(c=>c.tier===t).map(c=>({...c,x:c.pca_x,y:c.pca_y}))}
-                        fill={TIER_COLORS[t]} opacity={0.88}/>
+                        fill={TIER_COLORS[t]} opacity={0.85} r={5}/>
                     ))}
-                    <Legend verticalAlign="top" height={28} formatter={v=><span style={{color:MUTED,fontSize:10}}>{v}</span>}/>
                   </ScatterChart>
                 </ResponsiveContainer>
+                {/* Outlier callouts below chart */}
+                <div style={{display:"flex",justifyContent:"space-between",marginTop:6,paddingLeft:10,paddingRight:60}}>
+                  {[["LBN","Lebanon","#FF5A5A"],["MMR","Myanmar","#FF5A5A"]].map(([iso,name,c])=>(
+                    <span key={iso} style={{fontSize:10,color:c,fontStyle:"italic"}}>◀ {name}</span>
+                  ))}
+                  {[["UAE","UAE","#00D4AA"],["CZE","Czech Rep.","#00D4AA"]].map(([iso,name,c])=>(
+                    <span key={iso} style={{fontSize:10,color:c,fontStyle:"italic"}}>{name} ▶</span>
+                  ))}
+                </div>
               </Panel>
+
               <Panel>
-                <PLabel>Score vs Inflation — by Tier</PLabel>
-                <ResponsiveContainer width="100%" height={380}>
-                  <ScatterChart margin={{left:10,right:10,top:10,bottom:10}}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)"/>
-                    <XAxis dataKey="x" type="number" domain={[0,"auto"]} {...AX}
-                      label={{value:"Inflation Rate (%)",position:"insideBottom",offset:-5,fill:MUTED,fontSize:10}}/>
-                    <YAxis dataKey="y" type="number" domain={[0,100]} {...AX}
-                      label={{value:"Investment Score",angle:-90,position:"insideLeft",fill:MUTED,fontSize:10}}/>
+                <div style={{marginBottom:16}}>
+                  <div style={{fontSize:13,fontWeight:600,color:TEXT,marginBottom:3}}>Every country above 20% inflation scores below 65 — without exception</div>
+                  <div style={{fontSize:11,color:MUTED}}>Investment score (0–100) vs inflation rate (%)</div>
+                </div>
+                <div style={{display:"flex",gap:14,marginBottom:10,flexWrap:"wrap"}}>
+                  {TIER_NAMES.map(t=>(
+                    <div key={t} style={{display:"flex",alignItems:"center",gap:5}}>
+                      <div style={{width:8,height:8,borderRadius:"50%",background:TIER_COLORS[t]}}/>
+                      <span style={{fontSize:10,color:MUTED}}>{t.split(":")[0]}</span>
+                    </div>
+                  ))}
+                </div>
+                <ResponsiveContainer width="100%" height={360}>
+                  <ScatterChart margin={{left:10,right:20,top:10,bottom:30}}>
+                    <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false}/>
+                    <XAxis dataKey="x" type="number" domain={[0,"auto"]}
+                      tick={{fill:MUTED,fontSize:10}} axisLine={{stroke:BORDER}} tickLine={false}
+                      label={{value:"Inflation rate (%)",position:"insideBottom",offset:-18,fill:MUTED,fontSize:10}}/>
+                    <YAxis dataKey="y" type="number" domain={[0,100]}
+                      tick={{fill:MUTED,fontSize:10}} axisLine={false} tickLine={false}
+                      label={{value:"Investment score",angle:-90,position:"insideLeft",offset:10,fill:MUTED,fontSize:10}}/>
+                    {/* Threshold annotation */}
+                    <ReferenceLine x={20} stroke="rgba(255,90,90,0.35)" strokeDasharray="4 3" strokeWidth={1.5}
+                      label={{value:"20% inflation threshold",position:"insideTopRight",fill:"#FF5A5A",fontSize:9,offset:4}}/>
+                    <ReferenceLine y={65} stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" strokeWidth={1}
+                      label={{value:"score = 65",position:"insideTopRight",fill:MUTED,fontSize:9}}/>
                     <Tooltip content={({payload})=>{
                       const d=payload?.[0]?.payload; if(!d) return null;
-                      return <div style={{...TT.contentStyle}}><strong>{d.country}</strong><div style={{color:MUTED,fontSize:11}}>Score: {d.investment_score} · Inflation: {fmt(d.inflation)}%</div></div>;
+                      return <div style={{...TT.contentStyle}}>
+                        <strong>{d.country}</strong>
+                        <div style={{color:MUTED,fontSize:11,marginTop:2}}>Score: {d.investment_score} · Inflation: {fmt(d.inflation)}%</div>
+                      </div>;
                     }}/>
                     {TIER_NAMES.map(t=>(
-                      <Scatter key={t} name={t.split(":")[0]}
+                      <Scatter key={t}
                         data={COUNTRIES.filter(c=>c.tier===t).map(c=>({...c,x:c.inflation,y:c.investment_score}))}
-                        fill={TIER_COLORS[t]} opacity={0.88}/>
+                        fill={TIER_COLORS[t]} opacity={0.85} r={5}/>
                     ))}
-                    <Legend verticalAlign="top" height={28} formatter={v=><span style={{color:MUTED,fontSize:10}}>{v}</span>}/>
                   </ScatterChart>
                 </ResponsiveContainer>
+                {/* Callout for extreme outliers */}
+                <div style={{marginTop:8,fontSize:10,color:MUTED,fontStyle:"italic",paddingLeft:10}}>
+                  Far right: <span style={{color:"#FF5A5A"}}>Lebanon (162%)</span> · <span style={{color:"#FF5A5A"}}>Turkey (72%)</span> · <span style={{color:"#FF5A5A"}}>Argentina (72%)</span>
+                </div>
               </Panel>
-            </div>
-            {/* Cluster summary cards */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginTop:18}}>
-              {TIER_NAMES.map(t=>{
-                const cs=COUNTRIES.filter(c=>c.tier===t);
-                const avgS=(cs.reduce((s,c)=>s+c.investment_score,0)/cs.length).toFixed(1);
-                const avgInf=(cs.reduce((s,c)=>s+c.inflation,0)/cs.length).toFixed(1);
-                const avgPol=(cs.reduce((s,c)=>s+c.pol_stability,0)/cs.length).toFixed(2);
-                return (
-                  <div key={t} style={{background:PANEL,border:`1px solid ${TIER_COLORS[t]}33`,borderRadius:10,padding:"14px 16px"}}>
-                    <div style={{fontSize:9,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.07em",color:TIER_COLORS[t],marginBottom:6}}>{t.split(":")[0]}</div>
-                    <div style={{fontSize:10,color:MUTED,marginBottom:10}}>{t.split(":")[1]?.trim()}</div>
-                    <div style={{fontSize:22,fontWeight:700,color:TIER_COLORS[t],marginBottom:2}}>{cs.length}</div>
-                    <div style={{fontSize:10,color:MUTED,marginBottom:8}}>countries</div>
-                    {[["Avg Score",avgS],["Avg Inflation",avgInf+"%"],["Avg Pol. Stab.",avgPol]].map(([l,v])=>(
-                      <div key={l} style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                        <span style={{fontSize:10,color:MUTED}}>{l}</span>
-                        <span style={{fontSize:10,fontFamily:"monospace",color:TEXT}}>{v}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
             </div>
           </div>
         )}
@@ -486,19 +517,24 @@ export default function App() {
         {/* ── 04 FEATURES ── */}
         {tab==="features" && (
           <div>
-            <SecHead n="04" title="Feature Importance & Score Distribution"
-              desc={`Ridge Regression (α=1.0) coefficients identify which indicators drive investment attractiveness. Model CV R² = ${META.ridge_cv_r2.toFixed(4)}. Positive coefficients (teal) increase the score; negative (red) decrease it. Features are standardised so coefficients are directly comparable.`}/>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18}}>
+            <SecHead n="04" title="Governance and growth drive scores — inflation and debt drag them down"
+              desc={`Ridge Regression (α=1.0, CV R² = ${META.ridge_cv_r2.toFixed(4)}) on 12 standardised features. Bar length = influence on score. Most countries (${COUNTRIES.filter(c=>c.investment_score>=60).length} of 51) score between 60–100; a tail of 7 score below 50 due to crisis-level inflation or political collapse.`}/>
+            <div style={{display:"grid",gridTemplateColumns:"3fr 2fr",gap:18}}>
               <Panel>
-                <PLabel>Ridge Regression Coefficients (standardised)</PLabel>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:13,fontWeight:600,color:TEXT,marginBottom:3}}>Political stability has the same weight as GDP growth</div>
+                  <div style={{fontSize:11,color:MUTED}}>Standardised Ridge coefficients — bars are directly comparable across features</div>
+                </div>
                 <ResponsiveContainer width="100%" height={420}>
-                  <BarChart data={[...FEATURE_IMPORTANCE].sort((a,b)=>a.coefficient-b.coefficient)} layout="vertical" margin={{left:160,right:24,top:5,bottom:5}}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false}/>
-                    <XAxis type="number" {...AX} domain={["auto","auto"]}/>
-                    <YAxis type="category" dataKey="label" tick={{fill:MUTED,fontSize:9.5}} width={155}/>
-                    <ReferenceLine x={0} stroke="rgba(255,255,255,0.18)" strokeDasharray="3 3"/>
-                    <Tooltip {...TT} formatter={v=>[v.toFixed(3),"Coefficient"]}/>
-                    <Bar dataKey="coefficient" radius={[0,3,3,0]}>
+                  <BarChart data={[...FEATURE_IMPORTANCE].sort((a,b)=>a.coefficient-b.coefficient)} layout="vertical"
+                    margin={{left:170,right:50,top:5,bottom:5}}>
+                    <CartesianGrid stroke="rgba(255,255,255,0.04)" horizontal={true} vertical={false}/>
+                    <XAxis type="number" tick={{fill:MUTED,fontSize:10}} axisLine={{stroke:BORDER}} tickLine={false} domain={["auto","auto"]}/>
+                    <YAxis type="category" dataKey="label" tick={{fill:MUTED,fontSize:9.5}} width={165} axisLine={false} tickLine={false}/>
+                    <ReferenceLine x={0} stroke="rgba(255,255,255,0.2)" strokeWidth={1}/>
+                    <Tooltip contentStyle={TT.contentStyle} formatter={v=>[v.toFixed(3),"Coefficient"]} labelStyle={{color:TEXT}}/>
+                    <Bar dataKey="coefficient" radius={[0,3,3,0]}
+                      label={{position:"right",fill:MUTED,fontSize:9,formatter:v=>v>0?`+${v.toFixed(1)}`:v.toFixed(1)}}>
                       {[...FEATURE_IMPORTANCE].sort((a,b)=>a.coefficient-b.coefficient).map((f,i)=>(
                         <Cell key={i} fill={f.coefficient>=0?"#00D4AA":"#FF5A5A"} opacity={0.85}/>
                       ))}
@@ -506,43 +542,42 @@ export default function App() {
                   </BarChart>
                 </ResponsiveContainer>
               </Panel>
-              <div style={{display:"flex",flexDirection:"column",gap:18}}>
-                <Panel>
-                  <PLabel>Score Distribution (all 51 countries)</PLabel>
-                  <ResponsiveContainer width="100%" height={185}>
-                    <BarChart data={Array.from({length:10},(_,i)=>({
-                      range:`${i*10}–${i*10+10}`,
-                      count:COUNTRIES.filter(c=>c.investment_score>=i*10&&c.investment_score<(i+1)*10+(i===9?1:0)).length
-                    }))} margin={{left:0,right:10,top:10,bottom:5}}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)"/>
-                      <XAxis dataKey="range" {...AX} tick={{fill:MUTED,fontSize:9}}/>
-                      <YAxis {...AX}/>
-                      <Tooltip {...TT}/>
-                      <Bar dataKey="count" name="Countries" radius={[2,2,0,0]}>
-                        {Array.from({length:10},(_,i)=><Cell key={i} fill={scoreCol(i*10+5)} opacity={0.85}/>)}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </Panel>
-                <Panel>
-                  <PLabel>Average Score by Tier</PLabel>
-                  <ResponsiveContainer width="100%" height={185}>
-                    <BarChart data={TIER_NAMES.map(t=>({
-                      name:t.split(":")[0].replace("Tier ","T"),
-                      score:+(COUNTRIES.filter(c=>c.tier===t).reduce((s,c)=>s+c.investment_score,0)/Math.max(1,COUNTRIES.filter(c=>c.tier===t).length)).toFixed(1),
-                      color:TIER_COLORS[t]
-                    }))} margin={{left:0,right:10,top:18,bottom:5}}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)"/>
-                      <XAxis dataKey="name" {...AX}/>
-                      <YAxis {...AX} domain={[0,100]}/>
-                      <Tooltip {...TT} formatter={v=>[v,"Avg Score"]}/>
-                      <Bar dataKey="score" radius={[4,4,0,0]} label={{position:"top",fill:TEXT,fontSize:11}}>
-                        {TIER_NAMES.map((t,i)=><Cell key={i} fill={TIER_COLORS[t]} opacity={0.85}/>)}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </Panel>
-              </div>
+
+              <Panel>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:13,fontWeight:600,color:TEXT,marginBottom:3}}>Most markets score 60–80; 7 are in crisis</div>
+                  <div style={{fontSize:11,color:MUTED}}>Distribution of investment scores across all 51 countries</div>
+                </div>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={Array.from({length:10},(_,i)=>({
+                    range:`${i*10}–${(i+1)*10}`,
+                    count:COUNTRIES.filter(c=>c.investment_score>=i*10&&c.investment_score<(i+1)*10+(i===9?1:0)).length
+                  }))} margin={{left:0,right:10,top:10,bottom:20}}>
+                    <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false}/>
+                    <XAxis dataKey="range" tick={{fill:MUTED,fontSize:9,angle:-30,textAnchor:"end"}} axisLine={{stroke:BORDER}} tickLine={false} height={40}/>
+                    <YAxis tick={{fill:MUTED,fontSize:10}} axisLine={false} tickLine={false}/>
+                    <Tooltip contentStyle={TT.contentStyle} formatter={v=>[v,"countries"]} labelStyle={{color:TEXT}}/>
+                    <Bar dataKey="count" radius={[2,2,0,0]}
+                      label={{position:"top",fill:MUTED,fontSize:10,formatter:v=>v>0?v:""}}>
+                      {Array.from({length:10},(_,i)=><Cell key={i} fill={scoreCol(i*10+5)} opacity={0.85}/>)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+
+                {/* Takeaway callouts */}
+                <div style={{marginTop:18,display:"flex",flexDirection:"column",gap:10}}>
+                  {[
+                    ["#00D4AA", `${COUNTRIES.filter(c=>c.investment_score>=80).length} countries score 80+`, "UAE, Czech Rep., Chile, Malaysia lead"],
+                    ["#FF5A5A", `${COUNTRIES.filter(c=>c.investment_score<40).length} score below 40`, "Lebanon, Myanmar, Ukraine in crisis"],
+                    ["#FFB547", `Median score: ${[...COUNTRIES].sort((a,b)=>a.investment_score-b.investment_score)[25]?.investment_score}`, "Half of all markets are cautious-tier"],
+                  ].map(([c,headline,sub])=>(
+                    <div key={headline} style={{borderLeft:`3px solid ${c}`,paddingLeft:10}}>
+                      <div style={{fontSize:12,fontWeight:600,color:TEXT}}>{headline}</div>
+                      <div style={{fontSize:10,color:MUTED,marginTop:2}}>{sub}</div>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
             </div>
           </div>
         )}
@@ -550,18 +585,34 @@ export default function App() {
         {/* ── 05 REGIONAL ── */}
         {tab==="regional" && (
           <div>
-            <SecHead n="05" title="Regional Breakdown"
-              desc="Average investment scores and economic profiles by geographic region. Select a country to view its individual feature radar profile."/>
+            <SecHead n="05" title="East Asia leads on score; Sub-Saharan Africa leads on GDP growth"
+              desc="Regional averages mask wide within-region variance. Europe & CA's high average is driven by Czech Republic (96) and Poland (88), not the region as a whole. Select any country to explore its individual profile."/>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18,marginBottom:18}}>
               <Panel>
-                <PLabel>Average Score by Region</PLabel>
-                <ResponsiveContainer width="100%" height={290}>
-                  <BarChart data={[...REGIONAL].sort((a,b)=>b.avg_score-a.avg_score)} margin={{left:5,right:10,top:20,bottom:65}}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)"/>
-                    <XAxis dataKey="region" tick={{fill:MUTED,fontSize:10,angle:-30,textAnchor:"end"}} height={70}/>
-                    <YAxis {...AX} domain={[0,90]}/>
-                    <Tooltip {...TT} formatter={v=>[v.toFixed(1),"Avg Score"]}/>
-                    <Bar dataKey="avg_score" name="Avg Score" radius={[4,4,0,0]}
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:13,fontWeight:600,color:TEXT,marginBottom:3}}>Latin America punches above its inflation weight</div>
+                  <div style={{fontSize:11,color:MUTED}}>Average investment score by region — hover for detail</div>
+                </div>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={[...REGIONAL].sort((a,b)=>b.avg_score-a.avg_score)} margin={{left:5,right:10,top:10,bottom:60}}>
+                    <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false}/>
+                    <XAxis dataKey="region" tick={{fill:MUTED,fontSize:10,angle:-30,textAnchor:"end"}} axisLine={{stroke:BORDER}} tickLine={false} height={65}/>
+                    <YAxis tick={{fill:MUTED,fontSize:10}} axisLine={false} tickLine={false} domain={[0,90]}/>
+                    <Tooltip contentStyle={TT.contentStyle}
+                      content={({payload,label})=>{
+                        if(!payload?.length) return null;
+                        const r=REGIONAL.find(x=>x.region===label);
+                        return <div style={{...TT.contentStyle}}>
+                          <strong>{label}</strong>
+                          <div style={{color:MUTED,fontSize:11,marginTop:4}}>Score: {r?.avg_score.toFixed(1)}</div>
+                          <div style={{color:MUTED,fontSize:11}}>GDP growth: {r?.avg_gdp_growth.toFixed(1)}%</div>
+                          <div style={{color:r?.avg_inflation>15?"#FF5A5A":MUTED,fontSize:11}}>Inflation: {r?.avg_inflation.toFixed(1)}%</div>
+                          <div style={{color:MUTED,fontSize:11}}>{r?.country_count} countries</div>
+                        </div>;
+                      }}/>
+                    <ReferenceLine y={65} stroke="rgba(255,255,255,0.1)" strokeDasharray="3 3"
+                      label={{value:"avg = 65",position:"insideTopRight",fill:MUTED,fontSize:9}}/>
+                    <Bar dataKey="avg_score" radius={[3,3,0,0]}
                       label={{position:"top",fill:TEXT,fontSize:10,formatter:v=>v.toFixed(1)}}>
                       {[...REGIONAL].sort((a,b)=>b.avg_score-a.avg_score).map((r,i)=>(
                         <Cell key={i} fill={r.avg_score>=72?"#00D4AA":r.avg_score>=65?"#4A9EFF":r.avg_score>=58?"#FFB547":"#FF5A5A"} opacity={0.85}/>
@@ -570,31 +621,41 @@ export default function App() {
                   </BarChart>
                 </ResponsiveContainer>
               </Panel>
+
               <Panel>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap"}}>
-                  <PLabel style={{margin:0}}>Country Radar Profile —</PLabel>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:600,color:TEXT,marginBottom:2}}>Country feature profile</div>
+                    <div style={{fontSize:11,color:MUTED}}>Normalised attractiveness, 0–10 per axis</div>
+                  </div>
                   <select value={radarISO} onChange={e=>setRadarISO(e.target.value)}
-                    style={{background:"rgba(255,255,255,0.07)",border:`1px solid ${BORDER}`,borderRadius:6,padding:"4px 8px",color:TEXT,fontSize:11,outline:"none",flex:1,maxWidth:200}}>
+                    style={{background:"rgba(255,255,255,0.07)",border:`1px solid ${BORDER}`,borderRadius:6,padding:"5px 8px",color:TEXT,fontSize:11,outline:"none",maxWidth:180}}>
                     {[...COUNTRIES].sort((a,b)=>a.country.localeCompare(b.country)).map(c=>(
                       <option key={c.iso3} value={c.iso3}>{c.country}</option>
                     ))}
                   </select>
-                  {radarC && <span style={{fontSize:11,fontFamily:"monospace",color:radarC.tier_color}}>Score: {radarC.investment_score}</span>}
+                  {radarC && (
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontSize:18,fontWeight:700,color:radarC.tier_color,fontFamily:"monospace"}}>{radarC.investment_score}</div>
+                      <div style={{fontSize:9,color:MUTED,fontFamily:"monospace"}}>{radarC.tier.split(":")[0]}</div>
+                    </div>
+                  )}
                 </div>
-                <ResponsiveContainer width="100%" height={290}>
+                <ResponsiveContainer width="100%" height={265}>
                   <RadarChart data={radarData}>
                     <PolarGrid stroke="rgba(255,255,255,0.07)"/>
                     <PolarAngleAxis dataKey="label" tick={{fill:MUTED,fontSize:9.5}}/>
                     <Radar dataKey="value" stroke={radarC?.tier_color||"#00D4AA"} fill={radarC?.tier_color||"#00D4AA"} fillOpacity={0.15} strokeWidth={2}/>
-                    <Tooltip {...TT} formatter={v=>[v,"Score (0–10)"]}/>
+                    <Tooltip contentStyle={TT.contentStyle} formatter={v=>[v,"Score (0–10)"]}/>
                   </RadarChart>
                 </ResponsiveContainer>
               </Panel>
             </div>
+
             <Panel pad={0}>
               <table style={{width:"100%",borderCollapse:"collapse"}}>
                 <thead>
-                  <tr>{["Region","Countries","Avg Score","Avg GDP Growth","Avg Inflation","Avg FDI %GDP","Top Market"].map(h=>(
+                  <tr>{["Region","n","Avg Score","GDP Growth","Inflation","FDI %GDP","Top Market"].map(h=>(
                     <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:10,fontFamily:"monospace",letterSpacing:"0.06em",textTransform:"uppercase",color:MUTED,borderBottom:`1px solid ${BORDER}`,background:"rgba(255,255,255,0.02)"}}>{h}</th>
                   ))}</tr>
                 </thead>
@@ -603,12 +664,14 @@ export default function App() {
                     const top=COUNTRIES.filter(c=>c.region===r.region).sort((a,b)=>b.investment_score-a.investment_score)[0];
                     const c=r.avg_score>=72?"#00D4AA":r.avg_score>=65?"#4A9EFF":r.avg_score>=58?"#FFB547":"#FF5A5A";
                     return (
-                      <tr key={r.region}>
+                      <tr key={r.region}
+                        onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.02)"}
+                        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                         <td style={{padding:"9px 14px",fontWeight:500,borderBottom:`1px solid ${BORDER}`}}>{r.region}</td>
                         <td style={{padding:"9px 14px",fontFamily:"monospace",fontSize:11,color:MUTED,borderBottom:`1px solid ${BORDER}`}}>{r.country_count}</td>
                         <td style={{padding:"9px 14px",borderBottom:`1px solid ${BORDER}`}}>
                           <div style={{display:"flex",alignItems:"center",gap:8}}>
-                            <div style={{width:70,height:5,background:"rgba(255,255,255,0.07)",borderRadius:3,overflow:"hidden"}}>
+                            <div style={{width:60,height:4,background:"rgba(255,255,255,0.07)",borderRadius:3,overflow:"hidden"}}>
                               <div style={{height:"100%",width:`${r.avg_score}%`,background:c,borderRadius:3}}/>
                             </div>
                             <span style={{fontFamily:"monospace",fontSize:11,color:c}}>{r.avg_score.toFixed(1)}</span>
