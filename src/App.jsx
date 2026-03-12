@@ -415,10 +415,10 @@ export default function App() {
               <Panel>
                 <PLabel>PCA Scatter — Cluster Space</PLabel>
                 <ResponsiveContainer width="100%" height={380}>
-                  <ScatterChart margin={{left:10,right:10,top:10,bottom:32}}>
+                  <ScatterChart margin={{left:10,right:10,top:10,bottom:10}}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)"/>
                     <XAxis dataKey="x" type="number" domain={["auto","auto"]} {...AX}
-                      label={{value:`PC1 (${(META.pca_variance_pc1*100).toFixed(1)}%)`,position:"insideBottom",offset:-18,fill:MUTED,fontSize:10}}/>
+                      label={{value:`PC1 (${(META.pca_variance_pc1*100).toFixed(1)}%)`,position:"insideBottom",offset:-5,fill:MUTED,fontSize:10}}/>
                     <YAxis dataKey="y" type="number" domain={["auto","auto"]} {...AX}
                       label={{value:`PC2 (${(META.pca_variance_pc2*100).toFixed(1)}%)`,angle:-90,position:"insideLeft",fill:MUTED,fontSize:10}}/>
                     <Tooltip content={({payload})=>{
@@ -430,17 +430,17 @@ export default function App() {
                         data={COUNTRIES.filter(c=>c.tier===t).map(c=>({...c,x:c.pca_x,y:c.pca_y}))}
                         fill={TIER_COLORS[t]} opacity={0.88}/>
                     ))}
-                    <Legend formatter={v=><span style={{color:MUTED,fontSize:10}}>{v}</span>}/>
+                    <Legend verticalAlign="top" height={28} formatter={v=><span style={{color:MUTED,fontSize:10}}>{v}</span>}/>
                   </ScatterChart>
                 </ResponsiveContainer>
               </Panel>
               <Panel>
                 <PLabel>Score vs Inflation — by Tier</PLabel>
                 <ResponsiveContainer width="100%" height={380}>
-                  <ScatterChart margin={{left:10,right:10,top:10,bottom:32}}>
+                  <ScatterChart margin={{left:10,right:10,top:10,bottom:10}}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)"/>
                     <XAxis dataKey="x" type="number" domain={[0,"auto"]} {...AX}
-                      label={{value:"Inflation Rate (%)",position:"insideBottom",offset:-18,fill:MUTED,fontSize:10}}/>
+                      label={{value:"Inflation Rate (%)",position:"insideBottom",offset:-5,fill:MUTED,fontSize:10}}/>
                     <YAxis dataKey="y" type="number" domain={[0,100]} {...AX}
                       label={{value:"Investment Score",angle:-90,position:"insideLeft",fill:MUTED,fontSize:10}}/>
                     <Tooltip content={({payload})=>{
@@ -452,7 +452,7 @@ export default function App() {
                         data={COUNTRIES.filter(c=>c.tier===t).map(c=>({...c,x:c.inflation,y:c.investment_score}))}
                         fill={TIER_COLORS[t]} opacity={0.88}/>
                     ))}
-                    <Legend formatter={v=><span style={{color:MUTED,fontSize:10}}>{v}</span>}/>
+                    <Legend verticalAlign="top" height={28} formatter={v=><span style={{color:MUTED,fontSize:10}}>{v}</span>}/>
                   </ScatterChart>
                 </ResponsiveContainer>
               </Panel>
