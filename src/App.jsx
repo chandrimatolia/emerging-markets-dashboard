@@ -264,7 +264,12 @@ export default function App() {
   }, [sortCol,sortDir,filterTier,search]);
 
   const t1 = COUNTRIES.filter(c=>c.tier==="Tier 1: High Potential").length;
-  const TABS = [["map","🌍 Map"],["rankings","📊 Rankings"],["clusters","🔬 Clusters"],["features","📈 Features"],["regional","🗺 Regional"],["correlation","🔗 Correlation"],["methodology","⚙ Methodology"]];
+  const TABS = [["map","🌍 Map"],["rankings","📊 Rankings"],["clusters","🔬 Clusters"],["features","📈 Features"],["regional","🗺 Regional"],["correlation","🔗 Correlation"],["compare","⚖ Compare"],["quadrant","🎯 Quadrant"],["opportunity","🔭 Opportunity"],["risk","⚠ Risk"],["methodology","⚙ Methodology"]];
+  const [cmpA, setCmpA] = useState("VNM");
+  const [cmpB, setCmpB] = useState("IND");
+  const [qMetric, setQMetric] = useState("pol_stability");
+  const [oppHov, setOppHov] = useState(null);
+  const [riskHov, setRiskHov] = useState(null);
 
   const Panel = ({children,pad=20,style={}}) => (
     <div style={{background:PANEL,border:`1px solid ${BORDER}`,borderRadius:12,padding:pad,...style}}>{children}</div>
@@ -715,7 +720,600 @@ export default function App() {
         )}
 
         {/* ── 07 METHODOLOGY ── */}
-        {tab==="methodology" && (
+        {/* ── 08 COMPARE ── */}
+        {tab==="compare" && (() => {
+          const A = COUNTRIES.find(c=>c.iso3===cmpA);
+          const B = COUNTRIES.find(c=>c.iso3===cmpB);
+          const CMP_FEATURES = [
+            {key:"investment_score", label:"Investment Score", max:100, fmt:(v)=>v.toFixed(1)},
+            {key:"gdp_growth",       label:"GDP Growth (%)",  max:15,  fmt:(v)=>v.toFixed(1)+"%"},
+            {key:"inflation",        label:"Inflation (%)",   max:80,  fmt:(v)=>v.toFixed(1)+"%", invert:true},
+            {key:"pol_stability",    label:"Political Stability", max:2, min:-2.5, fmt:(v)=>v.toFixed(2)},
+            {key:"rule_of_law",      label:"Rule of Law",     max:2,   min:-2, fmt:(v)=>v.toFixed(2)},
+            {key:"control_corruption",label:"Anti-Corruption",max:2,   min:-2, fmt:(v)=>v.toFixed(2)},
+            {key:"fdi_inflows",      label:"FDI Inflows (%GDP)", max:12, fmt:(v)=>v.toFixed(1)+"%"},
+            {key:"ext_debt_gni",     label:"Ext. Debt (%GNI)",  max:250,fmt:(v)=>v.toFixed(0)+"%", invert:true},
+            {key:"unemployment",     label:"Unemployment (%)",  max:35, fmt:(v)=>v.toFixed(1)+"%", invert:true},
+            {key:"trade_openness",   label:"Trade Openness (%GDP)", max:200, fmt:(v)=>v.toFixed(0)+"%"},
+            {key:"gross_cap_form",   label:"Capital Formation (%GDP)", max:45, fmt:(v)=>v.toFixed(1)+"%"},
+            {key:"current_account",  label:"Current Account (%GDP)", max:30, min:-25, fmt:(v)=>v.toFixed(1)+"%"},
+          ];
+          // Normalise to 0–100 scale for bar width
+          const norm = (key, val) => {
+            const f = CMP_FEATURES.find(x=>x.key===key);
+            if (!f) return 50;
+            const mn = f.min ?? 0;
+            const mx = f.max;
+            return Math.max(0, Math.min(100, ((val - mn)/(mx - mn))*100));
+          };
+          // Who wins each feature (higher = better unless invert)
+          const winner = (key, va, vb) => {
+            const f = CMP_FEATURES.find(x=>x.key===key);
+            if (!f || va===vb) return null;
+            return f.invert ? (va < vb ? "A" : "B") : (va > vb ? "A" : "B");
+          };
+          if (!A || !B) return null;
+          const aWins = CMP_FEATURES.filter(f=>winner(f.key, A[f.key], B[f.key])==="A").length;
+          const bWins = CMP_FEATURES.filter(f=>winner(f.key, A[f.key], B[f.key])==="B").length;
+          return (
+            <div>
+              <SecHead n="08" title="Head-to-head market comparison"
+                desc="Select any two markets to see a feature-by-feature breakdown. Bar length = normalised value (0–100 scale). Teal edge = better performer on that indicator."/>
+
+              {/* Country selectors */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:16,alignItems:"center",marginBottom:24}}>
+                <Panel style={{padding:16}}>
+                  <div style={{fontSize:10,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",fontFamily:"monospace",marginBottom:8}}>Market A</div>
+                  <select value={cmpA} onChange={e=>setCmpA(e.target.value)}
+                    style={{width:"100%",background:"rgba(255,255,255,0.07)",border:`1px solid ${BORDER}`,borderRadius:8,padding:"8px 10px",color:TEXT,fontSize:13,outline:"none"}}>
+                    {[...COUNTRIES].sort((a,b)=>a.country.localeCompare(b.country)).map(c=>(
+                      <option key={c.iso3} value={c.iso3}>{c.country}</option>
+                    ))}
+                  </select>
+                  {A && (
+                    <div style={{marginTop:12,display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{fontSize:28,fontWeight:700,fontFamily:"monospace",color:A.tier_color}}>{A.investment_score}</div>
+                      <div>
+                        <div style={{fontSize:11,color:TEXT}}>{A.country}</div>
+                        <div style={{fontSize:10,color:A.tier_color}}>{A.tier.split(":")[0]}</div>
+                      </div>
+                    </div>
+                  )}
+                </Panel>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:11,color:MUTED,marginBottom:6,fontFamily:"monospace"}}>wins</div>
+                  <div style={{fontSize:26,fontWeight:700,color:A.tier_color,fontFamily:"monospace"}}>{aWins}</div>
+                  <div style={{fontSize:11,color:MUTED,margin:"4px 0",fontFamily:"monospace"}}>vs</div>
+                  <div style={{fontSize:26,fontWeight:700,color:B.tier_color,fontFamily:"monospace"}}>{bWins}</div>
+                  <div style={{fontSize:11,color:MUTED,marginTop:6,fontFamily:"monospace"}}>wins</div>
+                </div>
+                <Panel style={{padding:16}}>
+                  <div style={{fontSize:10,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",fontFamily:"monospace",marginBottom:8}}>Market B</div>
+                  <select value={cmpB} onChange={e=>setCmpB(e.target.value)}
+                    style={{width:"100%",background:"rgba(255,255,255,0.07)",border:`1px solid ${BORDER}`,borderRadius:8,padding:"8px 10px",color:TEXT,fontSize:13,outline:"none"}}>
+                    {[...COUNTRIES].sort((a,b)=>a.country.localeCompare(b.country)).map(c=>(
+                      <option key={c.iso3} value={c.iso3}>{c.country}</option>
+                    ))}
+                  </select>
+                  {B && (
+                    <div style={{marginTop:12,display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{fontSize:28,fontWeight:700,fontFamily:"monospace",color:B.tier_color}}>{B.investment_score}</div>
+                      <div>
+                        <div style={{fontSize:11,color:TEXT}}>{B.country}</div>
+                        <div style={{fontSize:10,color:B.tier_color}}>{B.tier.split(":")[0]}</div>
+                      </div>
+                    </div>
+                  )}
+                </Panel>
+              </div>
+
+              {/* Dumbbell / diverging bar chart */}
+              <Panel pad={0}>
+                {/* Header row */}
+                <div style={{display:"grid",gridTemplateColumns:"180px 1fr 60px 1fr",gap:0,padding:"10px 16px",borderBottom:`1px solid ${BORDER}`,background:"rgba(255,255,255,0.02)"}}>
+                  <div style={{fontSize:10,color:MUTED,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.06em"}}>Indicator</div>
+                  <div style={{fontSize:10,color:A.tier_color,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.06em",textAlign:"right",paddingRight:8}}>{A?.country}</div>
+                  <div></div>
+                  <div style={{fontSize:10,color:B.tier_color,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.06em",paddingLeft:8}}>{B?.country}</div>
+                </div>
+                {CMP_FEATURES.map((f,i) => {
+                  const va = A?.[f.key] ?? 0;
+                  const vb = B?.[f.key] ?? 0;
+                  const na = norm(f.key, va);
+                  const nb = norm(f.key, vb);
+                  const w = winner(f.key, va, vb);
+                  return (
+                    <div key={f.key} style={{display:"grid",gridTemplateColumns:"180px 1fr 60px 1fr",gap:0,padding:"8px 16px",borderBottom:i<CMP_FEATURES.length-1?`1px solid ${BORDER}`:"none",background:i%2===0?"transparent":"rgba(255,255,255,0.01)"}}>
+                      {/* Label */}
+                      <div style={{fontSize:11,color:w?"#E8EDF5":MUTED,display:"flex",alignItems:"center"}}>{f.label}</div>
+                      {/* A bar (right-aligned, grows left) */}
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:6,paddingRight:8}}>
+                        <span style={{fontSize:10,fontFamily:"monospace",color:w==="A"?A.tier_color:MUTED,minWidth:40,textAlign:"right"}}>{f.fmt(va)}</span>
+                        <div style={{width:120,height:8,display:"flex",justifyContent:"flex-end",background:"rgba(255,255,255,0.05)",borderRadius:4,overflow:"hidden"}}>
+                          <div style={{width:`${na}%`,background:w==="A"?A.tier_color:"rgba(255,255,255,0.18)",borderRadius:4,transition:"width .4s"}}/>
+                        </div>
+                      </div>
+                      {/* Centre dot */}
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        <div style={{width:6,height:6,borderRadius:"50%",background:w?BORDER:"rgba(255,255,255,0.15)"}}/>
+                      </div>
+                      {/* B bar (left-aligned, grows right) */}
+                      <div style={{display:"flex",alignItems:"center",gap:6,paddingLeft:8}}>
+                        <div style={{width:120,height:8,background:"rgba(255,255,255,0.05)",borderRadius:4,overflow:"hidden"}}>
+                          <div style={{width:`${nb}%`,background:w==="B"?B.tier_color:"rgba(255,255,255,0.18)",borderRadius:4,transition:"width .4s"}}/>
+                        </div>
+                        <span style={{fontSize:10,fontFamily:"monospace",color:w==="B"?B.tier_color:MUTED,minWidth:40}}>{f.fmt(vb)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </Panel>
+
+              {/* Verdict */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:16}}>
+                {[A,B].map((c,ci) => {
+                  const other = ci===0?B:A;
+                  const wins = CMP_FEATURES.filter(f=>winner(f.key,A[f.key],B[f.key])===(ci===0?"A":"B"));
+                  const topWin = wins[0];
+                  const strengths = wins.slice(0,3).map(f=>f.label).join(", ");
+                  return (
+                    <Panel key={c.iso3} style={{borderColor:`${c.tier_color}33`}}>
+                      <div style={{fontSize:10,color:c.tier_color,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>{c.country} · {c.tier.split(":")[0]}</div>
+                      <div style={{fontSize:13,fontWeight:600,color:TEXT,marginBottom:6}}>
+                        {aWins===bWins ? "Tied overall" : wins.length > (ci===0?bWins:aWins) ? `Leads on ${wins.length} of ${CMP_FEATURES.length} indicators` : `Trails on ${CMP_FEATURES.length - wins.length} indicators`}
+                      </div>
+                      <div style={{fontSize:11,color:MUTED,lineHeight:1.65}}>
+                        {strengths ? `Stronger on: ${strengths}` : "No clear advantages"}
+                      </div>
+                      <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${BORDER}`,display:"flex",gap:16}}>
+                        {[["Score",c.investment_score],["GDP Growth",c.gdp_growth.toFixed(1)+"%"],["Inflation",c.inflation.toFixed(1)+"%"]].map(([l,v])=>(
+                          <div key={l}>
+                            <div style={{fontSize:9,color:MUTED,textTransform:"uppercase",fontFamily:"monospace",letterSpacing:"0.08em"}}>{l}</div>
+                            <div style={{fontSize:13,fontWeight:600,color:TEXT,fontFamily:"monospace"}}>{v}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </Panel>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── 09 QUADRANT ── */}
+        {tab==="quadrant" && (() => {
+          const YMETRICS = [
+            {key:"gdp_growth",     label:"GDP Growth (%)",         desc:"Economic momentum"},
+            {key:"fdi_inflows",    label:"FDI Inflows (% GDP)",    desc:"Foreign investor confidence"},
+            {key:"gross_cap_form", label:"Capital Formation (%GDP)",desc:"Domestic investment activity"},
+          ];
+          const XMETRIC = {key:"pol_stability", label:"Political Stability", min:-2.5, max:1.5};
+          const yM = YMETRICS.find(m=>m.key===qMetric) || YMETRICS[0];
+
+          // Compute quadrant stats
+          const median_x = [...COUNTRIES].sort((a,b)=>a.pol_stability-b.pol_stability)[Math.floor(COUNTRIES.length/2)].pol_stability;
+          const yVals = COUNTRIES.map(c=>c[yM.key]);
+          const median_y = [...yVals].sort((a,b)=>a-b)[Math.floor(yVals.length/2)];
+          const xMin = Math.min(...COUNTRIES.map(c=>c.pol_stability)) - 0.2;
+          const xMax = Math.max(...COUNTRIES.map(c=>c.pol_stability)) + 0.2;
+          const yMin = Math.min(...yVals) - 0.5;
+          const yMax = Math.max(...yVals) + 0.5;
+
+          // Quadrant labels
+          const Q = c => {
+            const x = c.pol_stability > median_x;
+            const y = c[yM.key] > median_y;
+            if (x && y)  return {id:"TL", label:"High Potential", color:"#00D4AA"};
+            if (!x && y) return {id:"TR", label:"Growth Trap",    color:"#FFB547"};
+            if (x && !y) return {id:"BL", label:"Stable but Slow",color:"#4A9EFF"};
+            return                {id:"BR", label:"High Risk",      color:"#FF5A5A"};
+          };
+
+          const quadrantCounts = {TL:0,TR:0,BL:0,BR:0};
+          COUNTRIES.forEach(c => quadrantCounts[Q(c).id]++);
+
+          // Notable countries per quadrant
+          const notable = {
+            TL: COUNTRIES.filter(c=>Q(c).id==="TL").sort((a,b)=>b.investment_score-a.investment_score).slice(0,3).map(c=>c.country),
+            TR: COUNTRIES.filter(c=>Q(c).id==="TR").sort((a,b)=>b[yM.key]-a[yM.key]).slice(0,3).map(c=>c.country),
+            BL: COUNTRIES.filter(c=>Q(c).id==="BL").sort((a,b)=>b.investment_score-a.investment_score).slice(0,3).map(c=>c.country),
+            BR: COUNTRIES.filter(c=>Q(c).id==="BR").sort((a,b)=>b.investment_score-a.investment_score).slice(0,3).map(c=>c.country),
+          };
+
+          return (
+            <div>
+              <SecHead n="09" title="The governance-growth quadrant reveals who is a value trap"
+                desc="Growth alone doesn't make a market attractive — it must be paired with political stability. Bottom-right countries show high growth rates but weak institutions. These are the value traps: high headline numbers that mask structural risk."/>
+
+              {/* Y-axis selector */}
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20,flexWrap:"wrap"}}>
+                <span style={{fontSize:11,color:MUTED}}>Y-axis:</span>
+                {YMETRICS.map(m=>(
+                  <button key={m.key} onClick={()=>setQMetric(m.key)}
+                    style={{padding:"5px 12px",background:qMetric===m.key?"rgba(0,212,170,0.12)":"rgba(255,255,255,0.04)",border:`1px solid ${qMetric===m.key?"rgba(0,212,170,0.4)":BORDER}`,borderRadius:6,color:qMetric===m.key?"#00D4AA":MUTED,fontFamily:"monospace",fontSize:10,cursor:"pointer"}}>
+                    {m.label}
+                  </button>
+                ))}
+                <span style={{fontSize:11,color:MUTED,marginLeft:8}}>X-axis: Political Stability (fixed)</span>
+              </div>
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:18}}>
+                {/* Scatter quadrant */}
+                <Panel>
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontSize:13,fontWeight:600,color:TEXT,marginBottom:2}}>Political stability (x) vs {yM.label.toLowerCase()} (y)</div>
+                    <div style={{fontSize:11,color:MUTED}}>Bubble size = investment score. Dashed lines = median thresholds.</div>
+                  </div>
+                  <ResponsiveContainer width="100%" height={420}>
+                    <ScatterChart margin={{left:10,right:20,top:10,bottom:30}}>
+                      <CartesianGrid stroke="rgba(255,255,255,0.03)" vertical={false}/>
+                      <XAxis dataKey="x" type="number" domain={[xMin,xMax]}
+                        tick={{fill:MUTED,fontSize:10}} axisLine={{stroke:BORDER}} tickLine={false}
+                        label={{value:"← Unstable   Political Stability   Stable →",position:"insideBottom",offset:-18,fill:MUTED,fontSize:10}}/>
+                      <YAxis dataKey="y" type="number" domain={[yMin,yMax]}
+                        tick={{fill:MUTED,fontSize:10}} axisLine={false} tickLine={false}
+                        label={{value:yM.label,angle:-90,position:"insideLeft",offset:10,fill:MUTED,fontSize:10}}/>
+                      {/* Quadrant dividers */}
+                      <ReferenceLine x={median_x} stroke="rgba(255,255,255,0.12)" strokeDasharray="4 3" strokeWidth={1}
+                        label={{value:"median stability",position:"insideTopRight",fill:MUTED,fontSize:9}}/>
+                      <ReferenceLine y={median_y} stroke="rgba(255,255,255,0.12)" strokeDasharray="4 3" strokeWidth={1}
+                        label={{value:`median ${yM.key.replace(/_/g," ")}`,position:"insideTopRight",fill:MUTED,fontSize:9}}/>
+                      <Tooltip content={({payload})=>{
+                        const d=payload?.[0]?.payload; if(!d) return null;
+                        const q=Q(d);
+                        return <div style={{...TT.contentStyle}}>
+                          <strong>{d.country}</strong>
+                          <div style={{color:q.color,fontSize:11,marginTop:2}}>{q.label}</div>
+                          <div style={{color:MUTED,fontSize:11,marginTop:2}}>Score: {d.investment_score}</div>
+                          <div style={{color:MUTED,fontSize:11}}>Stability: {fmt(d.pol_stability,2)}</div>
+                          <div style={{color:MUTED,fontSize:11}}>{yM.label}: {fmt(d[yM.key],1)}</div>
+                        </div>;
+                      }}/>
+                      {TIER_NAMES.map(t=>(
+                        <Scatter key={t}
+                          data={COUNTRIES.filter(c=>c.tier===t).map(c=>({
+                            ...c, x:c.pol_stability, y:c[yM.key],
+                          }))}
+                          fill={TIER_COLORS[t]} opacity={0.85}
+                          shape={(props)=>{
+                            const {cx,cy,payload} = props;
+                            const r = 4 + (payload.investment_score/100)*8;
+                            return <circle cx={cx} cy={cy} r={r} fill={TIER_COLORS[payload.tier]} opacity={0.8} stroke="rgba(0,0,0,0.3)" strokeWidth={0.5}/>;
+                          }}
+                        />
+                      ))}
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                  {/* Quadrant corner labels */}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:8}}>
+                    {[["#00D4AA","↗ High Potential","Stable + strong growth. Best entry point."],
+                      ["#FFB547","↗ Growth Trap","High growth, weak institutions. Proceed with caution."],
+                      ["#4A9EFF","↙ Stable but Slow","Good governance, low growth. Defensive play."],
+                      ["#FF5A5A","↙ High Risk","Weak on both axes. Avoid or deep discount required."]
+                    ].map(([c,l,sub])=>(
+                      <div key={l} style={{borderLeft:`3px solid ${c}`,paddingLeft:8}}>
+                        <div style={{fontSize:11,fontWeight:600,color:TEXT}}>{l}</div>
+                        <div style={{fontSize:10,color:MUTED,marginTop:2,lineHeight:1.4}}>{sub}</div>
+                      </div>
+                    ))}
+                  </div>
+                </Panel>
+
+                {/* Quadrant breakdown sidebar */}
+                <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                  {[
+                    {id:"TL",label:"High Potential",  color:"#00D4AA", desc:"Stable + growth"},
+                    {id:"TR",label:"Growth Trap",     color:"#FFB547", desc:"Growth, weak governance"},
+                    {id:"BL",label:"Stable but Slow", color:"#4A9EFF", desc:"Good governance, low growth"},
+                    {id:"BR",label:"High Risk",       color:"#FF5A5A", desc:"Weak on both axes"},
+                  ].map(({id,label,color,desc})=>(
+                    <Panel key={id} style={{borderColor:`${color}33`,padding:14}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                        <div>
+                          <div style={{fontSize:12,fontWeight:600,color}}>{label}</div>
+                          <div style={{fontSize:10,color:MUTED,marginTop:1}}>{desc}</div>
+                        </div>
+                        <div style={{fontSize:22,fontWeight:700,color,fontFamily:"monospace"}}>{quadrantCounts[id]}</div>
+                      </div>
+                      <div style={{fontSize:10,color:MUTED,lineHeight:1.6}}>
+                        {notable[id].join(" · ")}
+                      </div>
+                    </Panel>
+                  ))}
+
+                  {/* Key insight callout */}
+                  <Panel style={{borderColor:"rgba(255,181,71,0.3)",padding:14}}>
+                    <div style={{fontSize:11,fontWeight:600,color:"#FFB547",marginBottom:6}}>Growth Trap watch</div>
+                    <div style={{fontSize:11,color:MUTED,lineHeight:1.65}}>
+                      {COUNTRIES.filter(c=>Q(c).id==="TR").sort((a,b)=>b[yM.key]-a[yM.key]).slice(0,4).map(c=>(
+                        <div key={c.iso3} style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                          <span style={{color:TEXT}}>{c.country}</span>
+                          <span style={{fontFamily:"monospace",fontSize:10,color:"#FFB547"}}>{fmt(c[yM.key],1)}{yM.key==="gdp_growth"?"%":"%"} growth</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{fontSize:10,color:"rgba(255,181,71,0.7)",marginTop:8,fontStyle:"italic"}}>High growth + low stability = unrealised potential</div>
+                  </Panel>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── OPPORTUNITY MATRIX ── */}
+        {tab==="opportunity" && (() => {
+          const ragScore = c => c.gdp_growth / Math.sqrt(Math.max(1, c.inflation));
+          const maxRAG = Math.max(...COUNTRIES.map(ragScore));
+          const minRAG = Math.min(...COUNTRIES.map(ragScore));
+          const normRAG = c => ((ragScore(c) - minRAG) / (maxRAG - minRAG)) * 100;
+          const X_THRESH = 0, Y_THRESH = 4;
+          const SVG_W = 900, SVG_H = 480;
+          const PAD = {l:60, r:20, t:36, b:56};
+          const plotW = SVG_W - PAD.l - PAD.r;
+          const plotH = SVG_H - PAD.t - PAD.b;
+          const xMin = -2.3, xMax = 1.6, yMin = -32, yMax = 15;
+          const toSvgX = v => PAD.l + ((v - xMin)/(xMax - xMin)) * plotW;
+          const toSvgY = v => PAD.t + plotH - ((v - yMin)/(yMax - yMin)) * plotH;
+          const xThreshSvg = toSvgX(X_THRESH);
+          const yThreshSvg = toSvgY(Y_THRESH);
+          const bubbleR = c => Math.max(4, Math.min(18, c.fdi_inflows * 1.8));
+          const ALWAYS_LABEL = new Set(["VNM","IND","PHL","IDN","COL","BGD","ETH","MYS","GEO","ARM","CZE","URY","CHL","LBN","MMR","UKR","TUR","ARG","SAU","ARE","POL","BRA","CHN","NGA","PAK"]);
+          const quadrant = c => {
+            const strong = c.pol_stability >= X_THRESH, fast = c.gdp_growth >= Y_THRESH;
+            if ( strong &&  fast) return {id:"NE",label:"Stars",         color:"#00D4AA"};
+            if (!strong &&  fast) return {id:"NW",label:"Frontier",      color:"#FFB547"};
+            if ( strong && !fast) return {id:"SE",label:"Safe Havens",   color:"#4A9EFF"};
+            return                       {id:"SW",label:"Value Traps",   color:"#FF5A5A"};
+          };
+          const qCounts = {NE:0,NW:0,SE:0,SW:0};
+          COUNTRIES.forEach(c => qCounts[quadrant(c).id]++);
+          const ragRanked = [...COUNTRIES].sort((a,b) => ragScore(b) - ragScore(a));
+
+          return (
+            <div>
+              <SecHead n="10" title="Only 10 of 51 markets combine fast growth with stable institutions"
+                desc="The Opportunity Matrix maps every market on the two axes that matter most to long-run investors: governance quality (x) and GDP growth rate (y). Bubble size = FDI inflows as % of GDP — a real-world signal of where international capital is already flowing."/>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 300px",gap:18}}>
+                <Panel style={{padding:0,overflow:"hidden",position:"relative"}}>
+                  <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} style={{width:"100%",display:"block"}}
+                    onMouseLeave={()=>setOppHov(null)}>
+                    {/* Quadrant shading */}
+                    <rect x={xThreshSvg} y={PAD.t} width={SVG_W-xThreshSvg-PAD.r} height={yThreshSvg-PAD.t} fill="rgba(0,212,170,0.07)"/>
+                    <rect x={PAD.l} y={PAD.t} width={xThreshSvg-PAD.l} height={yThreshSvg-PAD.t} fill="rgba(255,181,71,0.06)"/>
+                    <rect x={xThreshSvg} y={yThreshSvg} width={SVG_W-xThreshSvg-PAD.r} height={SVG_H-yThreshSvg-PAD.b} fill="rgba(74,158,255,0.05)"/>
+                    <rect x={PAD.l} y={yThreshSvg} width={xThreshSvg-PAD.l} height={SVG_H-yThreshSvg-PAD.b} fill="rgba(255,90,90,0.06)"/>
+                    {/* Corner labels */}
+                    <text x={xThreshSvg+10} y={PAD.t+18} fill="#00D4AA" fontSize={11} fontWeight="600" fontFamily="system-ui">★ Stars</text>
+                    <text x={PAD.l+10} y={PAD.t+18} fill="#FFB547" fontSize={11} fontWeight="600" fontFamily="system-ui">◆ Frontier</text>
+                    <text x={xThreshSvg+10} y={SVG_H-PAD.b-8} fill="#4A9EFF" fontSize={11} fontWeight="600" fontFamily="system-ui">◉ Safe Havens</text>
+                    <text x={PAD.l+10} y={SVG_H-PAD.b-8} fill="#FF5A5A" fontSize={11} fontWeight="600" fontFamily="system-ui">✕ Value Traps</text>
+                    {/* Grid */}
+                    {[-20,-10,0,10].map(v=>{const sy=toSvgY(v);if(sy<PAD.t||sy>SVG_H-PAD.b)return null;return <line key={v} x1={PAD.l} y1={sy} x2={SVG_W-PAD.r} y2={sy} stroke="rgba(255,255,255,0.05)" strokeWidth={v===0?1.5:0.75}/>;
+                    })}
+                    {/* Dividers */}
+                    <line x1={xThreshSvg} y1={PAD.t} x2={xThreshSvg} y2={SVG_H-PAD.b} stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} strokeDasharray="5 4"/>
+                    <line x1={PAD.l} y1={yThreshSvg} x2={SVG_W-PAD.r} y2={yThreshSvg} stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} strokeDasharray="5 4"/>
+                    <text x={xThreshSvg+4} y={PAD.t-4} fill="rgba(255,255,255,0.3)" fontSize={8} fontFamily="monospace">stability = 0</text>
+                    <text x={PAD.l+4} y={yThreshSvg-4} fill="rgba(255,255,255,0.3)" fontSize={8} fontFamily="monospace">growth = 4%</text>
+                    {/* Axes */}
+                    {[-20,-10,0,5,10].map(v=>{const sy=toSvgY(v);if(sy<PAD.t||sy>SVG_H-PAD.b)return null;return <text key={v} x={PAD.l-6} y={sy+4} textAnchor="end" fill="rgba(107,122,153,0.8)" fontSize={9} fontFamily="monospace">{v}%</text>;})}
+                    {[-2,-1,0,1].map(v=><text key={v} x={toSvgX(v)} y={SVG_H-PAD.b+14} textAnchor="middle" fill="rgba(107,122,153,0.8)" fontSize={9} fontFamily="monospace">{v}</text>)}
+                    <text x={PAD.l+plotW/2} y={SVG_H-4} textAnchor="middle" fill="rgba(107,122,153,0.65)" fontSize={10} fontFamily="system-ui">← Weak governance · Political Stability Index · Strong governance →</text>
+                    <text x={14} y={PAD.t+plotH/2} textAnchor="middle" fill="rgba(107,122,153,0.65)" fontSize={10} fontFamily="system-ui" transform={`rotate(-90,14,${PAD.t+plotH/2})`}>GDP Growth (%)</text>
+                    {/* Bubbles */}
+                    {[...COUNTRIES].sort((a,b)=>a.investment_score-b.investment_score).map(c=>{
+                      const cx=toSvgX(c.pol_stability), cy=toSvgY(c.gdp_growth), r=bubbleR(c), q=quadrant(c), isHov=oppHov?.iso3===c.iso3;
+                      return (
+                        <g key={c.iso3} onMouseEnter={e=>setOppHov({...c,mx:e.clientX,my:e.clientY})} onMouseMove={e=>setOppHov(h=>h?{...h,mx:e.clientX,my:e.clientY}:null)} style={{cursor:"pointer"}}>
+                          <circle cx={cx} cy={cy} r={r} fill={q.color} opacity={isHov?1:0.72} stroke={isHov?"rgba(255,255,255,0.6)":"rgba(0,0,0,0.25)"} strokeWidth={isHov?1.5:0.5}/>
+                          {ALWAYS_LABEL.has(c.iso3)&&<text x={cx} y={cy-r-3} textAnchor="middle" fill="rgba(232,237,245,0.85)" fontSize={8} fontFamily="system-ui" fontWeight="500" style={{pointerEvents:"none"}}>{c.iso3}</text>}
+                        </g>
+                      );
+                    })}
+                    {/* Bubble size legend */}
+                    <text x={SVG_W-PAD.r-5} y={SVG_H-PAD.b-52} textAnchor="end" fill="rgba(107,122,153,0.55)" fontSize={8} fontFamily="system-ui">Bubble = FDI inflows (% GDP)</text>
+                    {[[3,1],[7,4],[13,10]].map(([r,label],i)=>(
+                      <g key={i}>
+                        <circle cx={SVG_W-PAD.r-15-(i*28)} cy={SVG_H-PAD.b-30} r={r} fill="none" stroke="rgba(107,122,153,0.35)" strokeWidth={1}/>
+                        <text x={SVG_W-PAD.r-15-(i*28)} y={SVG_H-PAD.b-12} textAnchor="middle" fill="rgba(107,122,153,0.45)" fontSize={7} fontFamily="monospace">{label}%</text>
+                      </g>
+                    ))}
+                  </svg>
+                  {oppHov&&(
+                    <div style={{position:"fixed",left:oppHov.mx+14,top:oppHov.my-80,background:PANEL2,border:`1px solid ${BORDER}`,borderRadius:8,padding:"10px 14px",fontSize:12,pointerEvents:"none",zIndex:600,color:TEXT,whiteSpace:"nowrap",boxShadow:"0 8px 32px rgba(0,0,0,0.6)"}}>
+                      <div style={{fontWeight:700,marginBottom:4}}>{oppHov.country} <span style={{fontFamily:"monospace",color:oppHov.tier_color,fontSize:11}}>{oppHov.investment_score}</span></div>
+                      <div style={{color:quadrant(oppHov).color,fontSize:11,marginBottom:6}}>{quadrant(oppHov).label}</div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"2px 16px"}}>
+                        {[["GDP growth",oppHov.gdp_growth.toFixed(1)+"%"],["Inflation",oppHov.inflation.toFixed(1)+"%"],["Pol. stability",oppHov.pol_stability.toFixed(2)],["FDI inflows",oppHov.fdi_inflows.toFixed(1)+"% GDP"],["Risk-adj. growth",ragScore(oppHov).toFixed(2)],["Region",oppHov.region]].map(([k,v])=>(
+                          <div key={k}><span style={{color:MUTED,fontSize:10}}>{k}: </span><span style={{fontFamily:"monospace",fontSize:11}}>{v}</span></div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </Panel>
+
+                <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                  <Panel>
+                    <div style={{fontSize:11,fontWeight:600,color:TEXT,marginBottom:12}}>Market breakdown</div>
+                    {[["NE","#00D4AA","★ Stars","Strong governance + fast growth"],["NW","#FFB547","◆ Frontier","Fast growth, weak institutions"],["SE","#4A9EFF","◉ Safe Havens","Stable but slow"],["SW","#FF5A5A","✕ Value Traps","Weak on both axes"]].map(([id,c,label,sub])=>(
+                      <div key={id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                        <div style={{fontSize:20,fontWeight:800,fontFamily:"monospace",color:c,minWidth:26}}>{qCounts[id]}</div>
+                        <div><div style={{fontSize:11,fontWeight:600,color:c}}>{label}</div><div style={{fontSize:10,color:MUTED}}>{sub}</div></div>
+                      </div>
+                    ))}
+                  </Panel>
+
+                  <Panel style={{flex:1}}>
+                    <div style={{fontSize:11,fontWeight:600,color:TEXT,marginBottom:4}}>Risk-adjusted growth ranking</div>
+                    <div style={{fontSize:10,color:MUTED,marginBottom:12,lineHeight:1.5}}>GDP growth ÷ √inflation — penalises fast-but-hot economies like Turkey</div>
+                    {ragRanked.slice(0,12).map((c,i)=>{
+                      const rag=ragScore(c), q=quadrant(c);
+                      return (
+                        <div key={c.iso3} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
+                          <span style={{fontSize:9,fontFamily:"monospace",color:MUTED,minWidth:16,textAlign:"right"}}>{i+1}</span>
+                          <div style={{flex:1}}>
+                            <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                              <span style={{fontSize:11,color:TEXT}}>{c.country}</span>
+                              <span style={{fontSize:10,fontFamily:"monospace",color:q.color}}>{rag.toFixed(2)}</span>
+                            </div>
+                            <div style={{height:3,background:"rgba(255,255,255,0.06)",borderRadius:2,overflow:"hidden"}}>
+                              <div style={{height:"100%",width:`${normRAG(c)}%`,background:q.color,borderRadius:2}}/>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </Panel>
+
+                  <Panel>
+                    <div style={{fontSize:11,fontWeight:600,color:TEXT,marginBottom:10}}>Key observations</div>
+                    {[["#00D4AA","Georgia & Armenia: the hidden stars","Both score 83–90, growing 10–12%, FDI >5% GDP. The strongest risk-adjusted profile in the dataset outside of East Asia."],["#FFB547","Bangladesh & Ethiopia: growth without governance","7%+ GDP growth but pol. stability below −1.0. High potential — if institutions improve."],["#FF5A5A","Turkey: the textbook value trap","5.6% growth sounds attractive. 72% inflation collapses risk-adjusted score to 0.66 — worse than countries with 2% growth."],["#4A9EFF","Chile & Uruguay: the quiet compounders","Strong rule of law, controlled inflation, moderate growth. The best risk-adjusted profile in Latin America."]].map(([c,h,b])=>(
+                      <div key={h} style={{borderLeft:`3px solid ${c}`,paddingLeft:10,marginBottom:12}}>
+                        <div style={{fontSize:11,fontWeight:600,color:TEXT,marginBottom:3}}>{h}</div>
+                        <div style={{fontSize:10,color:MUTED,lineHeight:1.55}}>{b}</div>
+                      </div>
+                    ))}
+                  </Panel>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── RISK DASHBOARD ── */}
+        {tab==="risk" && (() => {
+          const inflationRisk = c => Math.min(100, (c.inflation / 170) * 100);
+          const politicalRisk = c => Math.min(100, (Math.max(0, -c.pol_stability) / 2.1) * 100);
+          const debtRisk      = c => Math.min(100, (c.ext_debt_gni / 250) * 100);
+          const compositeRisk = c => (inflationRisk(c)*0.38 + politicalRisk(c)*0.35 + debtRisk(c)*0.27);
+          const sorted = [...COUNTRIES].sort((a,b) => compositeRisk(b) - compositeRisk(a));
+          const SVG_W = 900, ROW_H = 22, PAD_TOP = 40, PAD_BOT = 20;
+          const SVG_H = PAD_TOP + sorted.length * ROW_H + PAD_BOT;
+          const LABEL_W = 112, SCORE_W = 38, GAP = 8;
+          const BAR_AREA = SVG_W - LABEL_W - SCORE_W - GAP;
+          const BAR_MAX  = BAR_AREA / 3;
+          const riskColor = (v, type) => {
+            if(type==="inf") return v>60?"#FF5A5A":v>30?"#FFB547":"#4A9EFF";
+            if(type==="pol") return v>55?"#FF5A5A":v>25?"#FFB547":"#4A9EFF";
+            return                  v>50?"#FF5A5A":v>25?"#FFB547":"#4A9EFF";
+          };
+          const riskTier = v => v>55?{label:"Critical",color:"#FF5A5A"}:v>35?{label:"Elevated",color:"#FFB547"}:v>18?{label:"Moderate",color:"#4A9EFF"}:{label:"Low",color:"#00D4AA"};
+
+          return (
+            <div>
+              <SecHead n="11" title="Lebanon, Turkey and Argentina are in crisis for entirely different reasons"
+                desc="Three independent stress dimensions — inflation pressure, political fragility, and debt burden — each scored 0–100 and combined into a composite risk index. A single tier label hides the mechanism of failure. Hover any row for exact values."/>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:18}}>
+                <Panel style={{padding:0,overflow:"hidden",position:"relative"}}>
+                  {/* Sticky column headers */}
+                  <div style={{display:"grid",gridTemplateColumns:`${LABEL_W}px ${SCORE_W}px 1fr 1fr 1fr`,padding:"10px 0 10px 0",borderBottom:`1px solid ${BORDER}`,background:"rgba(13,21,37,0.98)",position:"sticky",top:0,zIndex:10}}>
+                    <div style={{fontSize:9,color:MUTED,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.07em",paddingLeft:16}}>Country</div>
+                    <div style={{fontSize:9,color:MUTED,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.07em"}}>Risk</div>
+                    {[["#FF5A5A","Inflation stress"],["#FFB547","Political fragility"],["#4A9EFF","Debt burden"]].map(([c,l])=>(
+                      <div key={l} style={{display:"flex",alignItems:"center",gap:5,paddingLeft:8}}>
+                        <div style={{width:8,height:8,borderRadius:2,background:c,opacity:0.85}}/>
+                        <span style={{fontSize:9,color:MUTED,fontFamily:"monospace"}}>{l}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{overflowY:"auto",maxHeight:720}}>
+                    <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} style={{width:"100%",display:"block"}}
+                      onMouseLeave={()=>setRiskHov(null)}>
+                      {/* X axis tick marks at top of each bar section */}
+                      {[0,25,50,75,100].map(v=>[0,1,2].map(col=>{
+                        const x = LABEL_W+SCORE_W+GAP + col*BAR_MAX + (v/100)*BAR_MAX;
+                        return <text key={`${v}-${col}`} x={x} y={PAD_TOP-4} textAnchor="middle" fill="rgba(107,122,153,0.4)" fontSize={7} fontFamily="monospace">{v}</text>;
+                      }))}
+                      {sorted.map((c,ri)=>{
+                        const y=PAD_TOP+ri*ROW_H;
+                        const iR=inflationRisk(c), pR=politicalRisk(c), dR=debtRisk(c), cR=compositeRisk(c);
+                        const rt=riskTier(cR);
+                        const isHov=riskHov?.iso3===c.iso3;
+                        return (
+                          <g key={c.iso3}
+                            onMouseEnter={e=>setRiskHov({...c,iR,pR,dR,cR,mx:e.clientX,my:e.clientY})}
+                            onMouseMove={e=>setRiskHov(h=>h?{...h,mx:e.clientX,my:e.clientY}:null)}
+                            style={{cursor:"pointer"}}>
+                            <rect x={0} y={y} width={SVG_W} height={ROW_H} fill={isHov?"rgba(255,255,255,0.04)":ri%2===0?"rgba(255,255,255,0.01)":"transparent"}/>
+                            <text x={LABEL_W-6} y={y+ROW_H*0.67} textAnchor="end" fill={isHov?TEXT:"rgba(232,237,245,0.78)"} fontSize={9.5} fontFamily="system-ui" fontWeight={isHov?"600":"400"}>{c.country}</text>
+                            <text x={LABEL_W+SCORE_W-4} y={y+ROW_H*0.67} textAnchor="end" fill={rt.color} fontSize={9} fontFamily="monospace" fontWeight="600">{cR.toFixed(0)}</text>
+                            {[[iR,"inf",0],[pR,"pol",1],[dR,"debt",2]].map(([val,type,col])=>{
+                              const bx=LABEL_W+SCORE_W+GAP+col*BAR_MAX;
+                              const bw=Math.max(0,(val/100)*BAR_MAX*0.9);
+                              const fc=riskColor(val,type);
+                              return (
+                                <g key={col}>
+                                  <rect x={bx} y={y+5} width={BAR_MAX-2} height={ROW_H-10} fill="rgba(255,255,255,0.03)" rx={2}/>
+                                  <rect x={bx} y={y+5} width={bw} height={ROW_H-10} fill={fc} opacity={0.82} rx={2}/>
+                                  {val>12&&<text x={bx+bw+3} y={y+ROW_H*0.67} fill="rgba(255,255,255,0.45)" fontSize={7.5} fontFamily="monospace">{val.toFixed(0)}</text>}
+                                </g>
+                              );
+                            })}
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+                  {riskHov&&(
+                    <div style={{position:"fixed",left:riskHov.mx+14,top:riskHov.my-110,background:PANEL2,border:`1px solid ${BORDER}`,borderRadius:8,padding:"10px 14px",fontSize:12,pointerEvents:"none",zIndex:600,color:TEXT,whiteSpace:"nowrap",boxShadow:"0 8px 32px rgba(0,0,0,0.6)"}}>
+                      <div style={{fontWeight:700,marginBottom:6}}>{riskHov.country} <span style={{color:riskTier(riskHov.cR).color,fontFamily:"monospace",fontSize:10}}>{riskTier(riskHov.cR).label}</span></div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"3px 18px"}}>
+                        {[["Composite risk",riskHov.cR.toFixed(1)],["Inflation stress",riskHov.iR.toFixed(1)],["Political fragility",riskHov.pR.toFixed(1)],["Debt burden",riskHov.dR.toFixed(1)],["Inflation",riskHov.inflation.toFixed(1)+"%"],["Pol. stability",riskHov.pol_stability.toFixed(2)],["Ext. debt %GNI",riskHov.ext_debt_gni.toFixed(0)+"%"],["Inv. score",riskHov.investment_score]].map(([k,v])=>(
+                          <div key={k}><span style={{color:MUTED,fontSize:10}}>{k}: </span><span style={{fontFamily:"monospace",fontSize:11}}>{v}</span></div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </Panel>
+
+                <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                  <Panel>
+                    <div style={{fontSize:11,fontWeight:600,color:TEXT,marginBottom:12}}>Risk tier distribution</div>
+                    {["Critical","Elevated","Moderate","Low"].map(tier=>{
+                      const colors={Critical:"#FF5A5A",Elevated:"#FFB547",Moderate:"#4A9EFF",Low:"#00D4AA"};
+                      const lo={Critical:55,Elevated:35,Moderate:18,Low:0};
+                      const hi={Critical:100,Elevated:55,Moderate:35,Low:18};
+                      const count=sorted.filter(c=>{const r=compositeRisk(c);return r>=lo[tier]&&r<hi[tier];}).length;
+                      return (
+                        <div key={tier} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <div style={{width:3,height:24,background:colors[tier],borderRadius:2}}/>
+                            <div>
+                              <div style={{fontSize:11,color:colors[tier],fontWeight:600}}>{tier}</div>
+                              <div style={{fontSize:9,color:MUTED}}>composite {tier==="Critical"?">55":tier==="Elevated"?"35–55":tier==="Moderate"?"18–35":"<18"}</div>
+                            </div>
+                          </div>
+                          <div style={{fontSize:24,fontWeight:700,fontFamily:"monospace",color:colors[tier]}}>{count}</div>
+                        </div>
+                      );
+                    })}
+                  </Panel>
+                  <Panel>
+                    <div style={{fontSize:11,fontWeight:600,color:TEXT,marginBottom:10}}>Three types of crisis</div>
+                    {[["#FF5A5A","Inflation-led: Lebanon, Turkey, Argentina","All three inflation-stress scores >80. Different political contexts — same price spiral mechanism destroying real returns."],["#FFB547","Politics-led: Myanmar, Pakistan, Nigeria","Political risk >70 even where inflation is contained. Governance collapse precedes economic failure — the leading indicator."],["#4A9EFF","Debt-led: Mongolia, Sri Lanka, Ukraine","External debt 100–241% GNI. Mongolia is the most extreme case: 241% GNI yet still growing — resource extraction masking structural fragility."]].map(([c,h,b])=>(
+                      <div key={h} style={{borderLeft:`3px solid ${c}`,paddingLeft:10,marginBottom:12}}>
+                        <div style={{fontSize:11,fontWeight:600,color:TEXT,marginBottom:3}}>{h}</div>
+                        <div style={{fontSize:10,color:MUTED,lineHeight:1.55}}>{b}</div>
+                      </div>
+                    ))}
+                  </Panel>
+                  <Panel>
+                    <div style={{fontSize:11,fontWeight:600,color:TEXT,marginBottom:10}}>Counterintuitive findings</div>
+                    {[["#00D4AA","Czech Republic: 120% debt, low overall risk","EU-integrated sovereign debt with strong institutions and low inflation. Debt structure and creditor quality matter far more than the headline number."],["#FFB547","Mongolia: the 241% GNI anomaly","Highest external debt in the dataset — yet investment score is 65.4. FDI inflows at 10% GDP signal resource-sector capital masking underlying vulnerability."]].map(([c,h,b])=>(
+                      <div key={h} style={{borderLeft:`3px solid ${c}`,paddingLeft:10,marginBottom:12}}>
+                        <div style={{fontSize:11,fontWeight:600,color:TEXT,marginBottom:3}}>{h}</div>
+                        <div style={{fontSize:10,color:MUTED,lineHeight:1.55}}>{b}</div>
+                      </div>
+                    ))}
+                  </Panel>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+
           <div>
             <SecHead n="07" title="Methodology & Model Details"
               desc="Technical documentation of the full ML pipeline: data sources, feature engineering, clustering, regression and scoring methodology."/>
