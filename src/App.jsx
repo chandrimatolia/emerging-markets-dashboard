@@ -757,7 +757,7 @@ export default function App() {
           const bWins = CMP_FEATURES.filter(f=>winner(f.key, A[f.key], B[f.key])==="B").length;
           return (
             <div>
-              <SecHead n="08" title="Head-to-head market comparison"
+              <SecHead n="07" title="Head-to-head market comparison"
                 desc="Select any two markets to see a feature-by-feature breakdown. Bar length = normalised value (0–100 scale). Teal edge = better performer on that indicator."/>
 
               {/* Country selectors */}
@@ -923,7 +923,7 @@ export default function App() {
 
           return (
             <div>
-              <SecHead n="09" title="The governance-growth quadrant reveals who is a value trap"
+              <SecHead n="08" title="The governance-growth quadrant reveals who is a value trap"
                 desc="Growth alone doesn't make a market attractive — it must be paired with political stability. Bottom-right countries show high growth rates but weak institutions. These are the value traps: high headline numbers that mask structural risk."/>
 
               {/* Y-axis selector */}
@@ -1072,7 +1072,7 @@ export default function App() {
 
           return (
             <div>
-              <SecHead n="10" title="Only 10 of 51 markets combine fast growth with stable institutions"
+              <SecHead n="09" title="Only 10 of 51 markets combine fast growth with stable institutions"
                 desc="The Opportunity Matrix maps every market on the two axes that matter most to long-run investors: governance quality (x) and GDP growth rate (y). Bubble size = FDI inflows as % of GDP — a real-world signal of where international capital is already flowing."/>
               <div style={{display:"grid",gridTemplateColumns:"1fr 300px",gap:18}}>
                 <Panel style={{padding:0,overflow:"hidden",position:"relative"}}>
@@ -1202,7 +1202,7 @@ export default function App() {
 
           return (
             <div>
-              <SecHead n="11" title="Lebanon, Turkey and Argentina are in crisis for entirely different reasons"
+              <SecHead n="10" title="Lebanon, Turkey and Argentina are in crisis for entirely different reasons"
                 desc="Three independent stress dimensions — inflation pressure, political fragility, and debt burden — each scored 0–100 and combined into a composite risk index. A single tier label hides the mechanism of failure. Hover any row for exact values."/>
               <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:18}}>
                 <Panel style={{padding:0,overflow:"hidden",position:"relative"}}>
@@ -1316,7 +1316,7 @@ export default function App() {
 
         {tab==="methodology" && (
           <div>
-            <SecHead n="07" title="Methodology & Model Details"
+            <SecHead n="11" title="Methodology & Model Details"
               desc="Technical documentation of the full ML pipeline: data sources, feature engineering, clustering, regression and scoring methodology."/>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(290px,1fr))",gap:16,marginBottom:24}}>
               {[{ico:"⬡",t:"KMeans Clustering",body:"Countries segmented into 4 investment tiers using KMeans on 12 StandardScaler-normalised features. Cluster labels mapped to tiers by average composite score (highest → Tier 1). k=4 chosen by elbow method on WCSS.",meta:"k=4 · n_init=20 · random_state=42 · scikit-learn"},
