@@ -1314,6 +1314,7 @@ export default function App() {
         })()}
 
 
+        {tab==="methodology" && (
           <div>
             <SecHead n="07" title="Methodology & Model Details"
               desc="Technical documentation of the full ML pipeline: data sources, feature engineering, clustering, regression and scoring methodology."/>
