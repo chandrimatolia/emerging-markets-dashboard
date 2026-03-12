@@ -298,7 +298,7 @@ export default function App() {
 
       {/* HEADER */}
       <header style={{padding:"40px 36px 30px",borderBottom:`1px solid ${BORDER}`,background:"linear-gradient(180deg,rgba(0,212,170,0.05) 0%,transparent 100%)"}}>
-        <div style={{fontSize:10,letterSpacing:"0.2em",textTransform:"uppercase",color:"#00D4AA",marginBottom:10,fontFamily:"monospace",opacity:0.75}}>ML · Data Science · Portfolio Project</div>
+        <div style={{fontSize:10,letterSpacing:"0.2em",textTransform:"uppercase",color:"#00D4AA",marginBottom:10,fontFamily:"monospace",opacity:0.75}}>ML · Data Science · Feature Engineering</div>
         <h1 style={{fontSize:"clamp(22px,3.8vw,46px)",fontWeight:800,letterSpacing:"-0.02em",margin:"0 0 12px",lineHeight:1.1,color:TEXT}}>Emerging Markets<br/>Investment Visualiser</h1>
         <p style={{fontSize:13,color:MUTED,maxWidth:660,lineHeight:1.65,margin:"0 0 20px"}}>Machine learning analysis of 51 emerging economies using 12 macroeconomic and governance indicators. KMeans clustering (k=4), Ridge Regression, PCA. Data: World Bank WDI 2022–23 · IMF WEO Apr 2023 · WB WGI 2022.</p>
         <div style={{display:"flex",gap:28,flexWrap:"wrap",marginBottom:18}}>
